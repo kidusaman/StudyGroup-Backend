@@ -94,36 +94,38 @@ io.on("connection", (socket) => {
   });
 
   // Handle sending group messages
-  socket.on("sendGroupMessage", async (data) => {
-    const { groupId, userId, message, localId } = data;
-    try {
-      // Save the message in the database (your query may differ)
-      const newMsgResult = await pool.query(
-        `INSERT INTO group_messages (group_id, user_id, message, created_at)
-         VALUES ($1, $2, $3, NOW())
-         RETURNING *`,
-        [groupId, userId, message]
-      );
-      const newMsg = newMsgResult.rows[0];
+// Example snippet for your Socket.io "sendGroupMessage" event:
+socket.on("sendGroupMessage", async (data) => {
+  const { groupId, userId, message, localId } = data;
+  try {
+    // Save the message in the database (your query may differ)
+    const newMsgResult = await pool.query(
+      `INSERT INTO group_messages (group_id, user_id, message, created_at)
+       VALUES ($1, $2, $3, NOW())
+       RETURNING *`,
+      [groupId, userId, message]
+    );
+    const newMsg = newMsgResult.rows[0];
 
-      // (Optional) Fetch the username if needed
-      const userRes = await pool.query("SELECT username FROM users WHERE id = $1", [userId]);
-      const username = userRes.rows[0].username;
+    // (Optional) Fetch the username if needed
+    const userRes = await pool.query("SELECT username FROM users WHERE id = $1", [userId]);
+    const username = userRes.rows[0].username;
 
-      // Construct the message object, including the localId from the client
-      const messageData = {
-        ...newMsg,
-        username,
-        localId: localId || null // include localId if provided
-      };
+    // Construct the message object, including the localId from the client
+    const messageData = {
+      ...newMsg,
+      username,
+      localId: localId || null // include localId if provided
+    };
 
-      // Emit the message to the group room
-      io.to(`group-${groupId}`).emit("receiveGroupMessage", messageData);
-      console.log(`📩 Group message in group-${groupId}: ${message}`);
-    } catch (err) {
-      console.error("❌ Error sending group message:", err);
-    }
-  });
+    // Emit the message to the group room
+    io.to(`group-${groupId}`).emit("receiveGroupMessage", messageData);
+    console.log(`📩 Group message in group-${groupId}: ${message}`);
+  } catch (err) {
+    console.error("❌ Error sending group message:", err);
+  }
+});
+
 
   socket.on("disconnect", () => {
     console.log("🔴 A user disconnected:", socket.id);
@@ -145,22 +147,5 @@ const sendNotification = async (userId, message, answerId) => {
 
 export { sendNotification, io };
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => console.log(`Server running on port ${PORT} 🚀`));
-
-// ✅ Prevent Railway from stopping the server unexpectedly
-process.on("SIGTERM", () => {
-  console.log("🔴 Received SIGTERM, shutting down gracefully...");
-  server.close(() => {
-    console.log("🛑 Server closed.");
-    process.exit(0);
-  });
-});
-
-process.on("SIGINT", () => {
-  console.log("🔴 Received SIGINT, shutting down gracefully...");
-  server.close(() => {
-    console.log("🛑 Server closed.");
-    process.exit(0);
-  });
-});
