@@ -4,7 +4,7 @@ import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
-import pool from "./db.js";
+import pool from "./db.js"; // now uses your connection string
 
 // Import routes
 import authRoutes from "./routes/authRoutes.js";
@@ -22,7 +22,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Adjust for production
+    origin: "*", // Adjust for production security settings
   },
 });
 
@@ -94,38 +94,36 @@ io.on("connection", (socket) => {
   });
 
   // Handle sending group messages
-// Example snippet for your Socket.io "sendGroupMessage" event:
-socket.on("sendGroupMessage", async (data) => {
-  const { groupId, userId, message, localId } = data;
-  try {
-    // Save the message in the database (your query may differ)
-    const newMsgResult = await pool.query(
-      `INSERT INTO group_messages (group_id, user_id, message, created_at)
-       VALUES ($1, $2, $3, NOW())
-       RETURNING *`,
-      [groupId, userId, message]
-    );
-    const newMsg = newMsgResult.rows[0];
+  socket.on("sendGroupMessage", async (data) => {
+    const { groupId, userId, message, localId } = data;
+    try {
+      // Save the message in the database
+      const newMsgResult = await pool.query(
+        `INSERT INTO group_messages (group_id, user_id, message, created_at)
+         VALUES ($1, $2, $3, NOW())
+         RETURNING *`,
+        [groupId, userId, message]
+      );
+      const newMsg = newMsgResult.rows[0];
 
-    // (Optional) Fetch the username if needed
-    const userRes = await pool.query("SELECT username FROM users WHERE id = $1", [userId]);
-    const username = userRes.rows[0].username;
+      // Fetch the sender's username
+      const userRes = await pool.query("SELECT username FROM users WHERE id = $1", [userId]);
+      const username = userRes.rows[0].username;
 
-    // Construct the message object, including the localId from the client
-    const messageData = {
-      ...newMsg,
-      username,
-      localId: localId || null // include localId if provided
-    };
+      // Construct the message object, including localId if provided
+      const messageData = {
+        ...newMsg,
+        username,
+        localId: localId || null,
+      };
 
-    // Emit the message to the group room
-    io.to(`group-${groupId}`).emit("receiveGroupMessage", messageData);
-    console.log(`📩 Group message in group-${groupId}: ${message}`);
-  } catch (err) {
-    console.error("❌ Error sending group message:", err);
-  }
-});
-
+      // Emit the message to the group room
+      io.to(`group-${groupId}`).emit("receiveGroupMessage", messageData);
+      console.log(`📩 Group message in group-${groupId}: ${message}`);
+    } catch (err) {
+      console.error("❌ Error sending group message:", err);
+    }
+  });
 
   socket.on("disconnect", () => {
     console.log("🔴 A user disconnected:", socket.id);
