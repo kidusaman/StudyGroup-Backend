@@ -1,5 +1,5 @@
+// server.js
 import path from 'path';
-import { fileURLToPath } from 'url';
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
@@ -18,10 +18,6 @@ import privateMessageRoutes from "./routes/privateMessageRoutes.js";
 import groupChatRoutes from "./routes/groupChatRoutes.js";
 
 dotenv.config();
-
-// Define __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
@@ -115,7 +111,7 @@ io.on("connection", (socket) => {
       const userRes = await pool.query("SELECT username FROM users WHERE id = $1", [userId]);
       const username = userRes.rows[0].username;
 
-      // Construct the message object, including the localId from the client
+      // Construct the message object, including the localId if provided
       const messageData = {
         ...newMsg,
         username,
@@ -147,15 +143,6 @@ const sendNotification = async (userId, message, answerId) => {
     console.error("❌ Error sending notification:", err);
   }
 };
-
-// Production: Serve static files from the React build folder
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(process.cwd(), 'build')));
-  // Catch-all handler: return index.html for any unrecognized route
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'build', 'index.html'));
-  });
-}
 
 export { sendNotification, io };
 
