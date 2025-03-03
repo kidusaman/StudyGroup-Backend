@@ -1,4 +1,4 @@
-// server.js
+//server.js
 import path from 'path';
 import express from "express";
 import http from "http";
