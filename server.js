@@ -1,4 +1,3 @@
-// server.js
 import path from 'path';
 import { fileURLToPath } from 'url';
 import express from "express";
@@ -20,7 +19,7 @@ import groupChatRoutes from "./routes/groupChatRoutes.js";
 
 dotenv.config();
 
-// Create __dirname for ES modules
+// Define __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -116,7 +115,7 @@ io.on("connection", (socket) => {
       const userRes = await pool.query("SELECT username FROM users WHERE id = $1", [userId]);
       const username = userRes.rows[0].username;
 
-      // Construct the message object, including the localId if provided
+      // Construct the message object, including the localId from the client
       const messageData = {
         ...newMsg,
         username,
@@ -149,13 +148,12 @@ const sendNotification = async (userId, message, answerId) => {
   }
 };
 
+// Production: Serve static files from the React build folder
 if (process.env.NODE_ENV === 'production') {
-  // Serve static files from the React build folder
-  app.use(express.static(path.join(__dirname, 'build')));
-
-  // Catch-all handler to serve index.html for unknown routes
+  app.use(express.static(path.join(process.cwd(), 'build')));
+  // Catch-all handler: return index.html for any unrecognized route
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'build', 'index.html'));
+    res.sendFile(path.join(process.cwd(), 'build', 'index.html'));
   });
 }
 
